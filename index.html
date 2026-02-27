@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>LevelForze: Redux Pro</title>
+    <style>
+        :root { --main: #ffcc00; --accent: #ff4400; --bg: #121212; }
+        body { margin: 0; background: var(--bg); color: var(--main); font-family: 'Courier New', Courier, monospace; overflow: hidden; touch-action: none; }
+        
+        #game-container { position: relative; width: 800px; height: 400px; margin: 20px auto; border: 4px solid #333; box-shadow: 0 0 20px rgba(0,0,0,0.5); background: #222; overflow: hidden; }
+        canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; cursor: crosshair; }
+
+        .overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.85); z-index: 100; backdrop-filter: blur(4px); }
+        h1 { font-size: 4rem; color: var(--main); margin: 0; text-transform: uppercase; letter-spacing: 8px; text-shadow: 4px 4px var(--accent); }
+        
+        .scroll-frame { 
+            width: 80%; max-height: 200px; overflow-y: auto; 
+            display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; 
+            padding: 20px; border: 2px solid var(--main); background: #000;
+        }
+
+        .btn { background: var(--main); color: #000; border: none; padding: 12px 24px; font-weight: bold; cursor: pointer; margin: 10px; text-transform: uppercase; transition: 0.2s; }
+        .btn:hover { background: #fff; transform: scale(1.05); }
+        .lvl-card { background: #222; color: var(--main); padding: 15px; text-align: center; border: 1px solid #444; cursor: pointer; }
+        .lvl-card:hover { border-color: var(--main); background: #333; }
+
+        .controls { position: fixed; bottom: 20px; width: 100%; display: flex; justify-content: space-between; padding: 0 40px; box-sizing: border-box; pointer-events: none; }
+        .btn-move { width: 70px; height: 70px; background: rgba(255, 255, 255, 0.1); border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; pointer-events: auto; display:flex; align-items:center; justify-content:center; color: white; font-size: 1.5rem; -webkit-user-select: none; }
+        
+        #ui-layer { position: absolute; top: 10px; left: 10px; pointer-events: none; font-weight: bold; font-size: 1.2rem; z-index: 50; }
+        
+        #editor-panel { position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.8); padding: 10px; border: 1px solid var(--main); z-index: 60; display: none; }
+        .tool-btn { background: #333; color: white; border: 1px solid #555; padding: 5px; margin: 2px; cursor: pointer; font-size: 10px; }
+        .tool-btn.active { background: var(--main); color: black; }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="ui-layer">STARS: <span id="star-count">0</span></div>
+
+    <div id="editor-panel">
+        <button class="tool-btn active" onclick="setBrush('plt', this)">PLATFORM</button>
+        <button class="tool-btn" onclick="setBrush('trp', this)">SPIKES</button>
+        <button class="tool-btn" onclick="setBrush('res', this)">STAR</button>
+        <button class="tool-btn" onclick="setBrush('gol', this)">EXIT</button>
+        <hr>
+        <button class="tool-btn" style="background:#2ecc71" onclick="saveCustomLevel()">SAVE</button>
+        <button class="tool-btn" style="background:#e74c3c" onclick="showScreen('title')">EXIT</button>
+    </div>
+
+    <div id="screen-title" class="overlay">
+        <h1>Level<span style="color:white">Forze</span></h1>
+        <div style="display:flex">
+            <button class="btn" onclick="startWithAudio('level-select')">Enter Zone</button>
+            <button class="btn" style="background:#444; color:white;" onclick="startWithAudio('editor')">Maker</button>
+        </div>
+    </div>
+
+    <div id="screen-level-select" class="overlay" style="display:none">
+        <h2 style="margin-top:0">SECTOR SELECT</h2>
+        <div class="scroll-frame" id="level-grid"></div>
+        <button class="btn" onclick="showScreen('title')">Return</button>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+</div>
+
+<div class="controls">
+    <div style="display:flex; gap:15px;">
+        <div class="btn-move" onmousedown="move(-1)" onmouseup="move(0)" ontouchstart="move(-1)" ontouchend="move(0)">←</div>
+        <div class="btn-move" onmousedown="move(1)" onmouseup="move(0)" ontouchstart="move(1)" ontouchend="move(0)">→</div>
+    </div>
+    <div class="btn-move" onmousedown="jump()" ontouchstart="jump()">UP</div>
+</div>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+canvas.width = 800; canvas.height = 400;
+
+let state = 'TITLE', brush = 'plt', shake = 0, frame = 0, camX = 0, currentLevel = 0;
+let player = { x: 100, y: 300, w: 24, h: 36, vx: 0, vy: 0, accel: 0.8, friction: 0.82, jumpPower: -13, gravity: 0.6, grounded: false, dir: 1, items: 0, input: 0 };
+
+// --- UNIQUE LEVEL GENERATOR ---
+function generateLevels() {
+    return Array.from({length: 50}, (_, i) => {
+        let l = [{x:0, y:360, w:1000 + (i*200), h:40, t:'plt'}];
+        // Add random platforms/hazards
+        for(let j=0; j<10; j++) {
+            let xPos = 400 + (j * 200);
+            let type = Math.random() > 0.4 ? 'plt' : 'trp';
+            l.push({x: xPos, y: type === 'trp' ? 330 : 250 - (Math.random()*100), w: 60 + Math.random()*100, h: 30, t: type});
+            if(Math.random() > 0.7) l.push({x: xPos + 20, y: 150, w: 40, h: 40, t: 'res'});
+        }
+        l.push({x: 800 + (i*200), y: 280, w: 40, h: 80, t: 'gol'});
+        return l;
+    });
+}
+let levels = generateLevels();
+let map = [];
+
+// --- AUDIO ENGINE (FIXED) ---
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+let musicStarted = false;
+
+function playNote(freq, type, start, dur, vol) {
+    const osc = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    osc.type = type; osc.frequency.setValueAtTime(freq, start);
+    g.gain.setValueAtTime(vol, start);
+    g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+    osc.connect(g); g.connect(audioCtx.destination);
+    osc.start(start); osc.stop(start + dur);
+}
+
+function musicLoop() {
+    if(state === 'TITLE') { musicStarted = false; return; }
+    let now = audioCtx.currentTime;
+    [110, 110, 130, 146, 110, 164].forEach((f, i) => {
+        playNote(f, 'triangle', now + (i * 0.25), 0.2, 0.08);
+        if(i % 3 === 0) playNote(f*2, 'square', now + (i * 0.25), 0.1, 0.02);
+    });
+    setTimeout(musicLoop, 1500);
+}
+
+// --- SAVE / LOAD SYSTEM ---
+function saveCustomLevel() {
+    localStorage.setItem('levelForze_custom', JSON.stringify(map));
+    alert("Map Data Saved to Sector Memory");
+}
+
+function loadCustomLevel() {
+    const saved = localStorage.getItem('levelForze_custom');
+    if(saved) map = JSON.parse(saved);
+}
+
+// --- CORE RENDERING ---
+function drawPlayer() {
+    ctx.save();
+    ctx.translate(player.x + player.w/2, player.y + player.h/2);
+    let stretch = 1 + (Math.abs(player.vy) * 0.02);
+    ctx.scale(player.dir / stretch, stretch);
+    ctx.fillStyle = '#000'; ctx.fillRect(-10, -22, 20, 18); // Head
+    ctx.fillStyle = '#ffcc00'; ctx.fillRect(player.dir > 0 ? 2 : -8, -16, 6, 6); // Eyes
+    ctx.fillStyle = '#000'; ctx.fillRect(-12, -6, 24, 15); // Body
+    if(Math.abs(player.vx) > 0.2 && player.grounded) {
+        let legY = Math.sin(frame * 0.2) * 5;
+        ctx.fillRect(-10, 8, 8, 6 + legY); ctx.fillRect(2, 8, 8, 6 - legY);
+    } else { ctx.fillRect(-10, 8, 8, 8); ctx.fillRect(2, 8, 8, 8); }
+    ctx.restore();
+}
+
+function drawObject(o) {
+    if(o.t === 'plt') {
+        ctx.fillStyle = '#333'; ctx.fillRect(o.x, o.y, o.w, o.h);
+        ctx.fillStyle = '#444'; ctx.fillRect(o.x, o.y, o.w, 4);
+        ctx.fillStyle = '#ffcc0022';
+        for(let i=0; i<o.w; i+=20) {
+            ctx.beginPath(); ctx.moveTo(o.x+i, o.y); ctx.lineTo(o.x+i+10, o.y);
+            ctx.lineTo(o.x+i, o.y+o.h); ctx.lineTo(o.x+i-10, o.y+o.h); ctx.fill();
+        }
+    } else if(o.t === 'trp') {
+        ctx.fillStyle = '#666';
+        for(let i=0; i<o.w; i+=10) {
+            ctx.beginPath(); ctx.moveTo(o.x+i, o.y+o.h); ctx.lineTo(o.x+i+5, o.y); ctx.lineTo(o.x+i+10, o.y+o.h); ctx.fill();
+        }
+    } else if(o.t === 'res') {
+        ctx.save(); ctx.translate(o.x + 20, o.y + 20); ctx.rotate(frame * 0.05);
+        ctx.fillStyle = '#ffcc00'; ctx.fillRect(-10, -10, 20, 20); ctx.restore();
+    } else if(o.t === 'gol') {
+        ctx.fillStyle = '#111'; ctx.fillRect(o.x, o.y, o.w, o.h);
+        ctx.strokeStyle = '#ffcc00'; ctx.lineWidth = 3; ctx.strokeRect(o.x+5, o.y+5, o.w-10, o.h-10);
+        ctx.fillStyle = player.items > 0 ? '#ffcc00' : '#333'; ctx.fillRect(o.x+15, o.y+15, o.w-30, o.h-30);
+    }
+}
+
+function update() {
+    frame++;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if(state === 'PLAYING' || state === 'EDITOR') {
+        if(player.input !== 0) { player.vx += player.input * player.accel; player.dir = player.input; }
+        player.vx *= player.friction; player.vy += player.gravity;
+        player.x += player.vx; player.y += player.vy;
+        player.grounded = false;
+
+        let targetCam = player.x - canvas.width / 2;
+        camX += (targetCam - camX) * 0.1;
+        camX = Math.max(0, camX);
+
+        map.forEach(o => {
+            if(player.x < o.x+o.w && player.x+player.w > o.x && player.y < o.y+o.h && player.y+player.h > o.y) {
+                if(o.t === 'plt') { if(player.vy > 0 && player.y < o.y) { player.y = o.y - player.h; player.vy = 0; player.grounded = true; }}
+                else if(o.t === 'trp') { die(); }
+                else if(o.t === 'res') { o.y = -999; player.items++; document.getElementById('star-count').innerText = player.items; playNote(600, 'sine', audioCtx.currentTime, 0.1, 0.1); }
+                else if(o.t === 'gol' && player.items > 0) { alert("Sector Clear!"); showScreen('level-select'); }
+            }
+        });
+        if(player.y > 500) die();
+    }
+
+    ctx.save();
+    ctx.translate(-camX, 0);
+    if(shake > 0) { ctx.translate(Math.random()*shake-shake/2, Math.random()*shake-shake/2); shake *= 0.9; }
+    map.forEach(drawObject);
+    drawPlayer();
+    ctx.restore();
+    requestAnimationFrame(update);
+}
+
+function move(d) { player.input = d; }
+function jump() { if(player.grounded) { player.vy = player.jumpPower; player.grounded = false; playNote(250, 'sine', audioCtx.currentTime, 0.1, 0.1); } }
+function die() { shake = 10; playNote(100, 'sawtooth', audioCtx.currentTime, 0.3, 0.1); loadLevel(currentLevel); }
+
+function startWithAudio(target) {
+    audioCtx.resume();
+    if(!musicStarted) { musicLoop(); musicStarted = true; }
+    if(target === 'editor') {
+        loadCustomLevel();
+        if(map.length === 0) map = [{x:0, y:360, w:2000, h:40, t:'plt'}];
+        showScreen('none'); state = 'EDITOR';
+        document.getElementById('editor-panel').style.display = 'block';
+    } else { showScreen(target); }
+}
+
+function showScreen(s) {
+    state = s.toUpperCase();
+    document.querySelectorAll('.overlay').forEach(e => e.style.display='none');
+    document.getElementById('editor-panel').style.display = 'none';
+    if(s !== 'none') document.getElementById('screen-'+s).style.display='flex';
+}
+
+function loadLevel(i) {
+    currentLevel = i;
+    map = JSON.parse(JSON.stringify(levels[i]));
+    player.x = 100; player.y = 200; player.vx = 0; player.vy = 0; player.items = 0;
+    camX = 0; document.getElementById('star-count').innerText = "0";
+    showScreen('none'); state = 'PLAYING';
+}
+
+function setBrush(t, btn) {
+    brush = t;
+    document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+}
+
+canvas.addEventListener('mousedown', (e) => {
+    if(state !== 'EDITOR') return;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left + camX;
+    const y = e.clientY - rect.top;
+    map.push({x: x-20, y: y-20, w: 40, h: 40, t: brush});
+});
+
+const grid = document.getElementById('level-grid');
+for(let i=0; i<levels.length; i++) {
+    const d = document.createElement('div');
+    d.className = 'lvl-card'; d.innerHTML = `S-${i+1}`;
+    d.onclick = () => loadLevel(i); grid.appendChild(d);
+}
+
+update();
+</script>
+</body>
+</html>
