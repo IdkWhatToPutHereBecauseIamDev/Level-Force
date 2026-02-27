@@ -3,72 +3,71 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>LevelForze:Random Ruins</title>
+    <title>LevelForze: Random Ruins</title>
     <style>
-        :root { --main: #ffcc00; --accent: #ff4400; --bg: #121212; }
-        body { margin: 0; background: var(--bg); color: var(--main); font-family: 'Courier New', Courier, monospace; overflow: hidden; touch-action: none; }
+        :root { --main: #ffcc00; --accent: #ff4400; --bg: #0a0a0a; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: var(--bg); color: var(--main); font-family: 'Courier New', Courier, monospace; overflow: hidden; display: flex; align-items: center; justify-content: center; touch-action: none; }
         
-        #game-container { position: relative; width: 800px; height: 400px; margin: 20px auto; border: 4px solid #333; box-shadow: 0 0 20px rgba(0,0,0,0.5); background: #222; overflow: hidden; }
-        canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; cursor: crosshair; }
+        #game-wrapper { position: relative; width: 100vw; height: 50vw; max-height: 100vh; max-width: 200vh; background: #1a1a1a; border: 2px solid #333; overflow: hidden; box-shadow: 0 0 50px #000; }
+        canvas { width: 100%; height: 100%; image-rendering: pixelated; }
 
-        .overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.85); z-index: 100; backdrop-filter: blur(4px); }
-        h1 { font-size: 4rem; color: var(--main); margin: 0; text-transform: uppercase; letter-spacing: 8px; text-shadow: 4px 4px var(--accent); }
+        .overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.9); z-index: 100; text-align: center; }
+        h1 { font-size: 8vw; margin: 0; text-transform: uppercase; letter-spacing: 1vw; text-shadow: 0.5vw 0.5vw var(--accent); }
         
-        .scroll-frame { 
-            width: 80%; max-height: 200px; overflow-y: auto; 
-            display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; 
-            padding: 20px; border: 2px solid var(--main); background: #000;
-        }
+        .warning-text { color: #ff4400; font-size: 1.2vw; font-weight: bold; margin: 10px; border: 1px solid #ff4400; padding: 5px; }
 
-        .btn { background: var(--main); color: #000; border: none; padding: 12px 24px; font-weight: bold; cursor: pointer; margin: 10px; text-transform: uppercase; transition: 0.2s; }
-        .btn:hover { background: #fff; transform: scale(1.05); }
-        .lvl-card { background: #222; color: var(--main); padding: 15px; text-align: center; border: 1px solid #444; cursor: pointer; }
-        .lvl-card:hover { border-color: var(--main); background: #333; }
+        .btn { background: var(--main); color: #000; border: none; padding: 1.5vw 3vw; font-weight: bold; cursor: pointer; margin: 5px; text-transform: uppercase; font-size: 1.5vw; }
+        .btn:active { transform: scale(0.95); }
 
-        .controls { position: fixed; bottom: 20px; width: 100%; display: flex; justify-content: space-between; padding: 0 40px; box-sizing: border-box; pointer-events: none; }
-        .btn-move { width: 70px; height: 70px; background: rgba(255, 255, 255, 0.1); border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; pointer-events: auto; display:flex; align-items:center; justify-content:center; color: white; font-size: 1.5rem; -webkit-user-select: none; }
+        #btn-leave-level { position: absolute; top: 10px; right: 10px; z-index: 200; background: #e74c3c; color: white; border: none; padding: 10px; cursor: pointer; display: none; font-size: 12px; }
+
+        .controls { position: fixed; bottom: 10px; width: 100%; display: flex; justify-content: space-between; padding: 0 20px; box-sizing: border-box; pointer-events: none; z-index: 300; }
+        .btn-move { width: 15vw; height: 15vw; max-width: 80px; max-height: 80px; background: rgba(255, 255, 255, 0.1); border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; pointer-events: auto; display:flex; align-items:center; justify-content:center; color: white; font-size: 24px; }
         
-        #ui-layer { position: absolute; top: 10px; left: 10px; pointer-events: none; font-weight: bold; font-size: 1.2rem; z-index: 50; }
-        
-        #editor-panel { position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.8); padding: 10px; border: 1px solid var(--main); z-index: 60; display: none; }
+        #ui-layer { position: absolute; top: 10px; left: 10px; pointer-events: none; font-weight: bold; z-index: 50; font-size: 14px; }
+        #editor-panel { position: absolute; top: 10px; left: 180px; background: rgba(0,0,0,0.8); padding: 5px; border: 1px solid var(--main); z-index: 60; display: none; }
         .tool-btn { background: #333; color: white; border: 1px solid #555; padding: 5px; margin: 2px; cursor: pointer; font-size: 10px; }
         .tool-btn.active { background: var(--main); color: black; }
     </style>
 </head>
 <body>
 
-<div id="game-container">
-    <div id="ui-layer">STARS: <span id="star-count">0</span></div>
+<div id="game-wrapper">
+    <div id="ui-layer">STARS: <span id="star-count">0</span> | LVL: <span id="lvl-display">1</span></div>
+    <button id="btn-leave-level" onclick="showScreen('title')">EXIT</button>
 
     <div id="editor-panel">
-        <button class="tool-btn active" onclick="setBrush('plt', this)">PLATFORM</button>
-        <button class="tool-btn" onclick="setBrush('trp', this)">SPIKES</button>
+        <button class="tool-btn active" onclick="setBrush('plt', this)">BLOCK</button>
+        <button class="tool-btn" onclick="setBrush('trp', this)">SPIKE</button>
         <button class="tool-btn" onclick="setBrush('res', this)">STAR</button>
         <button class="tool-btn" onclick="setBrush('gol', this)">EXIT</button>
-        <hr>
+        <button class="tool-btn" style="background:#e74c3c" onclick="setBrush('del', this)">DEL</button>
         <button class="tool-btn" style="background:#2ecc71" onclick="saveCustomLevel()">SAVE</button>
-        <button class="tool-btn" style="background:#e74c3c" onclick="showScreen('title')">EXIT</button>
+        <button class="tool-btn" style="background:#3498db" onclick="publishLevel()">PUBLISH</button>
     </div>
 
     <div id="screen-title" class="overlay">
         <h1>Level<span style="color:white">Forze</span></h1>
-        <div style="display:flex">
-            <button class="btn" onclick="startWithAudio('level-select')">Enter Zone</button>
-            <button class="btn" style="background:#444; color:white;" onclick="startWithAudio('editor')">Maker</button>
-        </div>
+        <div class="warning-text">(RANDOM LEVELS: IF IMPOSSIBLE, EXIT AND RETRY)</div>
+        <button class="btn" onclick="startInfinitePlay()">Adventure</button>
+        <button class="btn" style="background:#444; color:white;" onclick="startWithAudio('editor')">Maker</button>
+        <button class="btn" style="background:#666; color:white;" onclick="showScreen('options')">Options</button>
     </div>
 
-    <div id="screen-level-select" class="overlay" style="display:none">
-        <h2 style="margin-top:0">SECTOR SELECT</h2>
-        <div class="scroll-frame" id="level-grid"></div>
-        <button class="btn" onclick="showScreen('title')">Return</button>
+    <div id="screen-options" class="overlay" style="display:none">
+        <h2>CONFIG</h2>
+        <button id="music-toggle" class="btn" onclick="toggleMusic()">MUSIC: ON</button>
+        <button id="sfx-toggle" class="btn" onclick="toggleSFX()">SOUNDS: ON</button>
+        <button id="ghost-toggle" class="btn" onclick="toggleGhost()" style="width:250px; background:#444; color:white;">GHOST: OFF</button>
+        <button class="btn" style="background:#3498db; color:white;" onclick="loadLevelCode()">LOAD LEVEL</button>
+        <button class="btn" onclick="showScreen('title')">Back</button>
     </div>
 
     <canvas id="gameCanvas"></canvas>
 </div>
 
 <div class="controls">
-    <div style="display:flex; gap:15px;">
+    <div style="display:flex; gap:10px;">
         <div class="btn-move" onmousedown="move(-1)" onmouseup="move(0)" ontouchstart="move(-1)" ontouchend="move(0)">←</div>
         <div class="btn-move" onmousedown="move(1)" onmouseup="move(0)" ontouchstart="move(1)" ontouchend="move(0)">→</div>
     </div>
@@ -80,99 +79,93 @@ const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 canvas.width = 800; canvas.height = 400;
 
-let state = 'TITLE', brush = 'plt', shake = 0, frame = 0, camX = 0, currentLevel = 0;
+let state = 'TITLE', brush = 'plt', shake = 0, frame = 0, camX = 0, currentLvl = 1;
+let ghostEnabled = false, musicEnabled = true, sfxEnabled = true;
+let ghostData = [], currentReplay = [];
 let player = { x: 100, y: 300, w: 24, h: 36, vx: 0, vy: 0, accel: 0.8, friction: 0.82, jumpPower: -13, gravity: 0.6, grounded: false, dir: 1, items: 0, input: 0 };
-
-// --- UNIQUE LEVEL GENERATOR ---
-function generateLevels() {
-    return Array.from({length: 50}, (_, i) => {
-        let l = [{x:0, y:360, w:1000 + (i*200), h:40, t:'plt'}];
-        // Add random platforms/hazards
-        for(let j=0; j<10; j++) {
-            let xPos = 400 + (j * 200);
-            let type = Math.random() > 0.4 ? 'plt' : 'trp';
-            l.push({x: xPos, y: type === 'trp' ? 330 : 250 - (Math.random()*100), w: 60 + Math.random()*100, h: 30, t: type});
-            if(Math.random() > 0.7) l.push({x: xPos + 20, y: 150, w: 40, h: 40, t: 'res'});
-        }
-        l.push({x: 800 + (i*200), y: 280, w: 40, h: 80, t: 'gol'});
-        return l;
-    });
-}
-let levels = generateLevels();
 let map = [];
 
-// --- AUDIO ENGINE (FIXED) ---
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-let musicStarted = false;
+const scales = [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25];
 
-function playNote(freq, type, start, dur, vol) {
+function playNote(freq, dur, type='square', vol=0.1, isMusic=false) {
+    if (isMusic && !musicEnabled) return;
+    if (!isMusic && !sfxEnabled) return;
+    if (audioCtx.state === 'suspended') audioCtx.resume();
     const osc = audioCtx.createOscillator();
-    const g = audioCtx.createGain();
-    osc.type = type; osc.frequency.setValueAtTime(freq, start);
-    g.gain.setValueAtTime(vol, start);
-    g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
-    osc.connect(g); g.connect(audioCtx.destination);
-    osc.start(start); osc.stop(start + dur);
+    const gain = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + dur);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(); osc.stop(audioCtx.currentTime + dur);
 }
 
-function musicLoop() {
-    if(state === 'TITLE') { musicStarted = false; return; }
-    let now = audioCtx.currentTime;
-    [110, 110, 130, 146, 110, 164].forEach((f, i) => {
-        playNote(f, 'triangle', now + (i * 0.25), 0.2, 0.08);
-        if(i % 3 === 0) playNote(f*2, 'square', now + (i * 0.25), 0.1, 0.02);
+function startMelody() {
+    if (state !== 'PLAYING') return;
+    const notes = [0, 2, 4, 7, 5, 4, 2, 0];
+    notes.forEach((n, i) => {
+        const f = scales[Math.floor(Math.random() * scales.length)];
+        setTimeout(() => { if(state === 'PLAYING') playNote(f, 0.2, 'square', 0.05, true); }, i * 200);
     });
-    setTimeout(musicLoop, 1500);
+    setTimeout(startMelody, 1600);
 }
 
-// --- SAVE / LOAD SYSTEM ---
-function saveCustomLevel() {
-    localStorage.setItem('levelForze_custom', JSON.stringify(map));
-    alert("Map Data Saved to Sector Memory");
+function createRandomLevel() {
+    let l = [{x:0, y:360, w:500, h:40, t:'plt'}];
+    let curX = 400;
+    for(let j=0; j<15; j++) {
+        let gap = 110 + Math.random() * 75; 
+        let w = 80 + Math.random() * 150;
+        let y = 220 + Math.random() * 140;
+        l.push({x: curX + gap, y: y, w: w, h: 30, t: 'plt'});
+        if(Math.random() > 0.6) l.push({x: curX + gap + 20, y: y - 30, w: 30, h: 30, t: 'trp'});
+        if(Math.random() > 0.4) l.push({x: curX + gap + 10, y: y - 80, w: 35, h: 35, t: 'res'});
+        curX += gap + w;
+    }
+    l.push({x: curX + 100, y: 250, w: 40, h: 100, t: 'gol'});
+    return l;
 }
 
-function loadCustomLevel() {
-    const saved = localStorage.getItem('levelForze_custom');
-    if(saved) map = JSON.parse(saved);
-}
-
-// --- CORE RENDERING ---
-function drawPlayer() {
+function drawPlayer(p, isGhost=false) {
     ctx.save();
-    ctx.translate(player.x + player.w/2, player.y + player.h/2);
-    let stretch = 1 + (Math.abs(player.vy) * 0.02);
-    ctx.scale(player.dir / stretch, stretch);
-    ctx.fillStyle = '#000'; ctx.fillRect(-10, -22, 20, 18); // Head
-    ctx.fillStyle = '#ffcc00'; ctx.fillRect(player.dir > 0 ? 2 : -8, -16, 6, 6); // Eyes
-    ctx.fillStyle = '#000'; ctx.fillRect(-12, -6, 24, 15); // Body
-    if(Math.abs(player.vx) > 0.2 && player.grounded) {
-        let legY = Math.sin(frame * 0.2) * 5;
-        ctx.fillRect(-10, 8, 8, 6 + legY); ctx.fillRect(2, 8, 8, 6 - legY);
-    } else { ctx.fillRect(-10, 8, 8, 8); ctx.fillRect(2, 8, 8, 8); }
+    ctx.translate(p.x + 12, p.y + 18);
+    if(isGhost) ctx.globalAlpha = 0.3;
+    ctx.fillStyle = isGhost ? '#fff' : '#000';
+    ctx.fillRect(-12, -18, 24, 30);
+    ctx.fillStyle = isGhost ? '#aaa' : '#ffcc00';
+    ctx.fillRect(player.dir > 0 ? 2 : -8, -12, 6, 6);
+    if(!isGhost && Math.abs(p.vx) > 0.2 && p.grounded) {
+        let ly = Math.sin(frame * 0.2) * 5;
+        ctx.fillStyle = '#000';
+        ctx.fillRect(-10, 10, 8, 6+ly); ctx.fillRect(2, 10, 8, 6-ly);
+        if(frame % 18 === 0) playNote(100, 0.05, 'triangle', 0.02);
+    } else {
+        ctx.fillStyle = isGhost ? '#fff' : '#000';
+        ctx.fillRect(-10, 10, 8, 8); ctx.fillRect(2, 10, 8, 8);
+    }
     ctx.restore();
 }
 
 function drawObject(o) {
     if(o.t === 'plt') {
-        ctx.fillStyle = '#333'; ctx.fillRect(o.x, o.y, o.w, o.h);
-        ctx.fillStyle = '#444'; ctx.fillRect(o.x, o.y, o.w, 4);
-        ctx.fillStyle = '#ffcc0022';
-        for(let i=0; i<o.w; i+=20) {
-            ctx.beginPath(); ctx.moveTo(o.x+i, o.y); ctx.lineTo(o.x+i+10, o.y);
-            ctx.lineTo(o.x+i, o.y+o.h); ctx.lineTo(o.x+i-10, o.y+o.h); ctx.fill();
+        ctx.fillStyle = '#222'; ctx.fillRect(o.x, o.y, o.w, o.h);
+        ctx.fillStyle = '#ffcc0033';
+        for(let i=0; i<o.w; i+=30) {
+            ctx.beginPath(); ctx.moveTo(o.x+i, o.y); ctx.lineTo(o.x+i+15, o.y);
+            ctx.lineTo(o.x+i, o.y+o.h); ctx.lineTo(o.x+i-15, o.y+o.h); ctx.fill();
         }
     } else if(o.t === 'trp') {
-        ctx.fillStyle = '#666';
+        ctx.fillStyle = '#ff4400';
         for(let i=0; i<o.w; i+=10) {
             ctx.beginPath(); ctx.moveTo(o.x+i, o.y+o.h); ctx.lineTo(o.x+i+5, o.y); ctx.lineTo(o.x+i+10, o.y+o.h); ctx.fill();
         }
     } else if(o.t === 'res') {
-        ctx.save(); ctx.translate(o.x + 20, o.y + 20); ctx.rotate(frame * 0.05);
-        ctx.fillStyle = '#ffcc00'; ctx.fillRect(-10, -10, 20, 20); ctx.restore();
+        ctx.fillStyle = '#ffcc00'; ctx.fillRect(o.x+10, o.y+10, 20, 20);
     } else if(o.t === 'gol') {
-        ctx.fillStyle = '#111'; ctx.fillRect(o.x, o.y, o.w, o.h);
-        ctx.strokeStyle = '#ffcc00'; ctx.lineWidth = 3; ctx.strokeRect(o.x+5, o.y+5, o.w-10, o.h-10);
-        ctx.fillStyle = player.items > 0 ? '#ffcc00' : '#333'; ctx.fillRect(o.x+15, o.y+15, o.w-30, o.h-30);
+        ctx.fillStyle = player.items > 0 ? '#ffcc00' : '#444'; ctx.fillRect(o.x, o.y, o.w, o.h);
+        ctx.strokeStyle = '#fff'; ctx.strokeRect(o.x, o.y, o.w, o.h);
     }
 }
 
@@ -180,47 +173,61 @@ function update() {
     frame++;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     if(state === 'PLAYING' || state === 'EDITOR') {
-        if(player.input !== 0) { player.vx += player.input * player.accel; player.dir = player.input; }
+        player.vx += player.input * player.accel;
         player.vx *= player.friction; player.vy += player.gravity;
         player.x += player.vx; player.y += player.vy;
         player.grounded = false;
-
-        let targetCam = player.x - canvas.width / 2;
-        camX += (targetCam - camX) * 0.1;
+        if(player.input !== 0) player.dir = player.input;
+        camX += ((player.x - 300) - camX) * 0.1;
         camX = Math.max(0, camX);
-
+        if(state === 'PLAYING') currentReplay.push({x: player.x, y: player.y});
         map.forEach(o => {
             if(player.x < o.x+o.w && player.x+player.w > o.x && player.y < o.y+o.h && player.y+player.h > o.y) {
-                if(o.t === 'plt') { if(player.vy > 0 && player.y < o.y) { player.y = o.y - player.h; player.vy = 0; player.grounded = true; }}
-                else if(o.t === 'trp') { die(); }
-                else if(o.t === 'res') { o.y = -999; player.items++; document.getElementById('star-count').innerText = player.items; playNote(600, 'sine', audioCtx.currentTime, 0.1, 0.1); }
-                else if(o.t === 'gol' && player.items > 0) { alert("Sector Clear!"); showScreen('level-select'); }
+                if(o.t === 'plt' && player.vy > 0 && player.y < o.y) { player.y = o.y - player.h; player.vy = 0; player.grounded = true; }
+                else if(o.t === 'trp') die();
+                else if(o.t === 'res') { o.y = -999; player.items++; document.getElementById('star-count').innerText = player.items; playNote(600, 0.1); }
+                else if(o.t === 'gol' && player.items > 0) { 
+                    localStorage.setItem('best_run_'+currentLvl, JSON.stringify(currentReplay));
+                    currentLvl++; 
+                    document.getElementById('lvl-display').innerText = currentLvl;
+                    startInfinitePlay();
+                }
             }
         });
-        if(player.y > 500) die();
+        if(player.y > 600) die();
     }
-
-    ctx.save();
-    ctx.translate(-camX, 0);
+    ctx.save(); ctx.translate(-camX, 0);
     if(shake > 0) { ctx.translate(Math.random()*shake-shake/2, Math.random()*shake-shake/2); shake *= 0.9; }
+    if(ghostEnabled && ghostData[frame]) drawPlayer(ghostData[frame], true);
     map.forEach(drawObject);
-    drawPlayer();
+    drawPlayer(player);
     ctx.restore();
     requestAnimationFrame(update);
 }
 
 function move(d) { player.input = d; }
-function jump() { if(player.grounded) { player.vy = player.jumpPower; player.grounded = false; playNote(250, 'sine', audioCtx.currentTime, 0.1, 0.1); } }
-function die() { shake = 10; playNote(100, 'sawtooth', audioCtx.currentTime, 0.3, 0.1); loadLevel(currentLevel); }
+function jump() { if(player.grounded) { player.vy = player.jumpPower; player.grounded = false; playNote(300, 0.1, 'square'); } }
+function die() { 
+    shake = 15; playNote(100, 0.3, 'sawtooth'); 
+    player.x = 100; player.y = 200; player.vx = 0; player.vy = 0; player.items = 0;
+    camX = 0; frame = 0; currentReplay = []; 
+}
+
+function startInfinitePlay() {
+    map = createRandomLevel();
+    ghostData = JSON.parse(localStorage.getItem('best_run_'+currentLvl)) || [];
+    die(); showScreen('none'); state = 'PLAYING';
+    document.getElementById('btn-leave-level').style.display = 'block';
+    startMelody();
+}
 
 function startWithAudio(target) {
-    audioCtx.resume();
-    if(!musicStarted) { musicLoop(); musicStarted = true; }
     if(target === 'editor') {
-        loadCustomLevel();
-        if(map.length === 0) map = [{x:0, y:360, w:2000, h:40, t:'plt'}];
+        const saved = localStorage.getItem('levelForze_custom');
+        map = saved ? JSON.parse(saved) : [{x:0, y:360, w:1000, h:40, t:'plt'}];
         showScreen('none'); state = 'EDITOR';
         document.getElementById('editor-panel').style.display = 'block';
+        document.getElementById('btn-leave-level').style.display = 'block';
     } else { showScreen(target); }
 }
 
@@ -228,37 +235,41 @@ function showScreen(s) {
     state = s.toUpperCase();
     document.querySelectorAll('.overlay').forEach(e => e.style.display='none');
     document.getElementById('editor-panel').style.display = 'none';
+    document.getElementById('btn-leave-level').style.display = 'none';
     if(s !== 'none') document.getElementById('screen-'+s).style.display='flex';
 }
 
-function loadLevel(i) {
-    currentLevel = i;
-    map = JSON.parse(JSON.stringify(levels[i]));
-    player.x = 100; player.y = 200; player.vx = 0; player.vy = 0; player.items = 0;
-    camX = 0; document.getElementById('star-count').innerText = "0";
-    showScreen('none'); state = 'PLAYING';
+function toggleGhost() { ghostEnabled = !ghostEnabled; document.getElementById('ghost-toggle').innerText = "GHOST: " + (ghostEnabled ? "ON" : "OFF"); }
+function toggleMusic() { musicEnabled = !musicEnabled; document.getElementById('music-toggle').innerText = "MUSIC: " + (musicEnabled ? "ON" : "OFF"); }
+function toggleSFX() { sfxEnabled = !sfxEnabled; document.getElementById('sfx-toggle').innerText = "SOUNDS: " + (sfxEnabled ? "ON" : "OFF"); }
+function setBrush(t, btn) { brush = t; document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); }
+function saveCustomLevel() { localStorage.setItem('levelForze_custom', JSON.stringify(map)); alert("SAVED"); }
+
+function publishLevel() {
+    const code = btoa(JSON.stringify(map));
+    prompt("LEVEL PUBLISHED! Copy this code:", code);
 }
 
-function setBrush(t, btn) {
-    brush = t;
-    document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
+function loadLevelCode() {
+    const code = prompt("Enter Level Code:");
+    if(code) {
+        try {
+            map = JSON.parse(atob(code));
+            die(); showScreen('none'); state = 'PLAYING';
+            document.getElementById('btn-leave-level').style.display = 'block';
+            startMelody();
+        } catch(e) { alert("Invalid Code!"); }
+    }
 }
 
 canvas.addEventListener('mousedown', (e) => {
     if(state !== 'EDITOR') return;
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left + camX;
-    const y = e.clientY - rect.top;
-    map.push({x: x-20, y: y-20, w: 40, h: 40, t: brush});
+    const x = (e.clientX - rect.left) * (canvas.width / rect.width) + camX;
+    const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+    if(brush === 'del') map = map.filter(o => !(x > o.x && x < o.x+o.w && y > o.y && y < o.y+o.h));
+    else map.push({x: x-20, y: y-20, w: 40, h: 40, t: brush});
 });
-
-const grid = document.getElementById('level-grid');
-for(let i=0; i<levels.length; i++) {
-    const d = document.createElement('div');
-    d.className = 'lvl-card'; d.innerHTML = `S-${i+1}`;
-    d.onclick = () => loadLevel(i); grid.appendChild(d);
-}
 
 update();
 </script>
