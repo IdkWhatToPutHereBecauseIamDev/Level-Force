@@ -3,8 +3,8 @@
     "name": "Level Forces",
     "slug": "level-forces",
     "version": "1.0.0",
-    "orientation": "portrait",
-    "icon": "./icon.png",
+    "orientation": "landscape",
+    "icon": "./Untitled54_20260227184942.png",
     "ios": {
       "bundleIdentifier": "com.yourname.levelforces",
       "buildNumber": "1.0.0"
