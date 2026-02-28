@@ -1,0 +1,18 @@
+{
+  "expo": {
+    "name": "Level Forces",
+    "slug": "level-forces",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./icon.png",
+    "ios": {
+      "bundleIdentifier": "com.yourname.levelforces",
+      "buildNumber": "1.0.0"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "your-project-id"
+      }
+    }
+  }
+}
