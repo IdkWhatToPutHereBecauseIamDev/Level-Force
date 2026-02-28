@@ -1,18 +1,22 @@
 {
   "expo": {
     "name": "Level Forces",
-    "slug": "level-forces",
+    "slug": "mrkingfish",
     "version": "1.0.0",
-    "orientation": "landscape",
-    "icon": "./Untitled54_20260227184942.png",
     "ios": {
-      "bundleIdentifier": "com.kingfish.levelforces",
+      "bundleIdentifier": "com.mrkingfish.levelforces",
       "buildNumber": "1.0.0"
     },
     "extra": {
       "eas": {
         "projectId": "ae99b2f7-f70b-4efe-b165-ac34ea3cbddb"
       }
+    },
+    "updates": {
+      "url": "https://u.expo.dev"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
     }
   }
 }
