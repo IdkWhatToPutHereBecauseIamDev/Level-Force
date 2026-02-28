@@ -6,7 +6,7 @@
     "orientation": "landscape",
     "icon": "./Untitled54_20260227184942.png",
     "ios": {
-      "bundleIdentifier": "com.yourname.levelforces",
+      "bundleIdentifier": "com.kingfish.levelforces",
       "buildNumber": "1.0.0"
     },
     "extra": {
